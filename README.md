@@ -14,7 +14,7 @@ You need access to an AWS and a Snowflake account. If you do not already have ac
 Next, clone the project's github repo. It includes all artifacts needed to create the AWS and Snowflake resources as well as the dataset we are going to analyze.
 
 ```
-git clone <address> --recurse-submodules https://github.com/snowflakecorp/sfguide_autopilot.git
+git clone <address> --recurse-submodules https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration.git
 ```
 
 Note: The recurse-submodules flag is required because the repo references a submodule from the AWS-Samples repo.
