@@ -14,10 +14,10 @@ You need access to an AWS and a Snowflake account. If you do not already have ac
 Next, clone the project's github repo. It includes all artifacts needed to create the AWS and Snowflake resources as well as the dataset we are going to analyze.
 
 ```
-git clone --recurse-submodules https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration.git
+git clone https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration.git
 ```
 
-Note: The recurse-submodules flag is required because the repo references a submodule from the AWS-Samples repo.
+You also need Snowflakes command line interface (CLI). If Snowsql isn't already installed on your machine, please follow these [instructions](https://docs.snowflake.com/en/user-guide/snowsql.html).
 
 ## Use Case
 
@@ -39,7 +39,58 @@ Pro tip: Alternatively,you could run all steps from CLI commands.
 
 ### Snowflake configuration
 
-The Snowflake setup is completely-script driven. The  [script](scripts/setup.sql) creates a login, which we will use later to perform all steps executed in Snowflake, and a database and schema which holds all objects, i.e. tables, external functions, and JavaScript functions. Please note, that by creating a new user (and role), we don’t have to use ACCOUNTADMIN to run all subsequent steps in this demo. Be sure to update the password, first name, last name, and email address before you run it.
+Connect to your snowflake instance by opening a browser and connecting to [app.snowflake.com](https://app.snowflake.com).
+
+Provide you login credentials or click "Sign up" to create a free account. 
+
+Next, click "Worksheet" .
+
+This opens up a new Worksheet. All SQL statements in the post can be loaded from the [scripts](https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration/tree/main/scripts) directory in the [github repo](https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration). Copy and paste the content of [setup.sql](https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration/blob/main/scripts/setup.sql).
+
+Click the little triangle next to the worksheet name, give it a meaningful name (i called it autopilot_setup), click "Import SQL from File", and find the file scripts/setup.sql in your cloned repo.
+
+The  script creates a login, which we will use later to perform all steps executed in Snowflake, and a database and schema which holds all objects, i.e. tables, external functions, and JavaScript functions. Please note, that by creating a new user (and role), we don’t have to use ACCOUNTADMIN to run all subsequent steps in this demo. Be sure to update the password, first name, last name, and email address before you run it.
+
+```
+use role accountadmin;
+create role autopilot_role;
+grant create integration
+ on account
+ to role autopilot_role;
+ 
+create database autopilot_db;
+grant usage on database autopilot_db
+ to role autopilot_role;
+ 
+create schema demo;
+grant ownership
+ on schema autopilot_db.demo
+ to role autopilot_role;
+ 
+create warehouse autopilot_wh
+ with warehouse_size = 'medium';
+grant modify,monitor,usage,operate 
+ on warehouse autopilot_wh
+ to role autopilot_role; 
+ 
+create user autopilot_user
+ -- change the value for password in the line below
+ password = '<password>'
+ login_name = 'autopilot_user'
+ display_name = 'autopilot_user' 
+ -- update the values for first/last name in he lines below
+ first_name = '<first name>'
+ last_name = '<last name>'
+ email = '<your email address>'
+ default_role = autopilot_role
+ default_warehouse = autopilot_wh
+ default_namespace = autopilot_db
+ must_change_password = false; 
+grant role autopilot_role
+ to user autopilot_user;
+ 
+select current_account(),current_region();
+```
 
 ### Credentials configuration
 
@@ -49,7 +100,7 @@ To get started, log into your AWS account and search for Secrets Manager in the 
 
 In the Secrets Manager UI, create the three key/value pairs below. Be sure to configure the fully qualified account ID (including region and cloud).
 
-<p align="center"><img src="jpg/secrets_conf.png" width="300" height="300" /></p>
+<p align="center"><img src="jpg/secrets_conf.png" width="400" height="300" /></p>
 
 Give your secrets configuration a name and save it.
 
@@ -57,15 +108,19 @@ Next, find your secrets configuration again (the easiest way is to search for it
 
 ### Integration Configuration (CloudFormation)
 
-The last step is to configure the Snowflake/Autopilot Integration. This used to be a very time-consuming and error-prone process but with AWS CloudFormation it’s a “piece of cake”.
+The last step is to configure the Snowflake/Autopilot Integration. This used to be a very time-consuming and error-prone process but with AWS CloudFormation it's a "piece of cake".
 
-All necessary permissions required to run this CloudFormation script are included in the policies.zip file in the repo. However, for the purpose of this demo we are assuming that you have root access to the AWS console.
+Start with downloading the [CloudFormation script](https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration/blob/main/customer-stack/customer-stack.yml).
 
-Start with selecting the CloudFormation service from the AWS console.
+Click the "Raw" button. This opens a new browser window. "Double click" and click "Save As".
+
+For the purpose of this demo we are assuming that you have root access to the AWS console. In case you do not have root access, please ask your AWS admin to run these steps or to create a role based on the permissions listed in policies.zip.
+
+Log in to your AWS console and select the CloudFormation service.
 
 Then, click the “Create Stack” button at the top right corner.
 
-“Template is ready” should be selected by default. Click “Upload a template file” and select the template file “customer-stack.yml” from the repo at “amazon-sagemaker-integration-with-snowflake/customer-stack.
+"Template is ready" should be selected by default. Click "Upload a template file" and select the template file you just downloaded.
 
 The next screen allows you to enter the stack details for your environment. These are:
 
@@ -78,7 +133,7 @@ The next screen allows you to enter the stack details for your environment. Thes
 
 Be sure to pick consistent names because the AWS resources must be unique in your environment.
 
-<p align="center"><img src="jpg/cloudformation.png" width="300" height="300" /></p>
+<p align="center"><img src="jpg/cloudformation.png" width="400" height="300" /></p>
 
 Go with the defaults on the next two screens, so click “Next” twice.
 
@@ -99,6 +154,7 @@ The demo consists of 4 major steps and all steps will be initiated via [SQL comm
 1. Score test dataset and evaluate model
 1. Optimize model (including hyperparameter tuning)
 
+All SQL statements for this demo are included in scripts/demo.sql. Open another Worksheet and Import the file.
 
 ### Data Engineering
 
@@ -107,6 +163,7 @@ To make it easier to import the dataset into your Snowflake instance, (the datas
 ```
 use role autopilot_role;
 use database autopilot_db;
+use schema demo;
 use warehouse autopilot_wh;
 create or replace table cc_dataset (
  step number(38,0),
@@ -121,16 +178,20 @@ create or replace table cc_dataset (
  isfraud boolean,
  isflaggedfraud boolean
 ) ;
-create file format cc_file_formaat type=csv  skip_header=1;
+create file format cc_file_format type=csv  skip_header=1;
 ```
 
-Next, head over to the database tab and click Autopilot_db, then click the table we want to load, i.e. cc_dataset, and click “Load Table”.
+Next, head over to to a terminal session and use snowsql to upload the datafiles to an internal stage.
 
-Follow the steps in the load wizard, and select all 4 files from the data directory in the repo.
+```
+snowsql -a <accountid> -u autopilot_user -s demo -q "put file://*.gz @~/autopilot/"
+```
 
-Confirm the file format (it should already be pre-selected) and start the loading process. The whole process takes about 5 minutes. ncrypting the dataset taking the majority of the time (over 4 minutes).
+Then come back to you Snowflake session and run copy the staged data files into the table you had created above.
 
-Pro tip: Instead of using the Snowflake Web UI for loading the dataset into a table, you can upload the files first via the put command in snowsql. Then, load the files using command line “copy into” statements. This method is more scalable and much faster (30 secs vs 300 secs).
+```
+copy into cc_dataset from @~/autopilot file_format=cc_file_format;
+```
 
 Let’s briefly review the dataset.
 
@@ -178,16 +239,16 @@ This is where the “rubber meets the road” and where we would usually switch 
 
 ```
 select aws_autopilot_create_model (
-  'cc-fraud-prediction'  -- model name
-  ,'cc_dataset_train'    -- training data location
-  ,'isfraud'             -- target column
-  ,null                  -- objective metric
-  ,null                  -- problem type
-  ,5                     -- number of candidates to be evaluated
-                         --    via hyperparameter tuning 
-  ,15*60*60              -- training timeout
-  ,'True'                -- create scoring endpoint yes/no
-  ,1*60*60               -- endpoint TTL
+  'cc-fraud-prediction-dev'  -- model name
+  ,'cc_dataset_train'        -- training data location
+  ,'isfraud'                 -- target column
+  ,null                      -- objective metric
+  ,null                      -- problem type
+  ,5                         -- number of candidates to be evaluated
+                             --    via hyperparameter tuning 
+  ,15*60*60                  -- training timeout
+  ,'True'                    -- create scoring endpoint yes/no
+  ,1*60*60                   -- endpoint TTL
 );
 ```
 
@@ -201,7 +262,7 @@ Let’s review the SQL statement above. It calls a function that accepts a few p
 To check the current status of the model build process we call another function in the Snowflake/AWS Autopilot integration package.
 
 ```
-select aws_autopilot_describe_model('cc-fraud-prediction');
+select aws_autopilot_describe_model('cc-fraud-prediction-dev');
 ```
 
 When you call the aws_autopilot_describe_model() function repeatedly you will find that the model build process goes through several state transitions.
@@ -221,7 +282,7 @@ Now, let’s check how well our model achieves the goal of predicting fraud. For
 create or replace table cc_dataset_prediction_result as 
   select isfraud,(parse_json(
       aws_autopilot_predict_outcome(
-        'cc-fraud-prediction'
+        'cc-fraud-prediction-dev'
         ,array_construct(
            step,type,amount,nameorig,oldbalanceorg,newbalanceorig
            ,namedest,oldbalancedest,newbalancedest,isflaggedfraud))
@@ -234,7 +295,7 @@ If you get an error message saying “Could not find endpoint” when calling th
 To check the endpoint, call aws_autopilot_describe_endpoint(). You will get an error message if the endpoint doesn’t exist.
 
 ```
-select aws_autopilot_describe_endpoint('cc-fraud-prediction');
+select aws_autopilot_describe_endpoint('cc-fraud-prediction-dev');
 ```
 
 To restart the endpoint call the function aws_autopilot_create_endpoint(), which takes 3 parameters.
@@ -246,8 +307,8 @@ To restart the endpoint call the function aws_autopilot_create_endpoint(), which
 
 ```
 select aws_autopilot_create_endpoint (
-    'cc-fraud-prediction' 
-    ,'cc-fraud-prediction-m5-4xl-2' 
+    'cc-fraud-prediction-dev' 
+    ,'cc-fraud-prediction-dev-m5-4xl-2' 
     ,1*60*60);
 ```
 
@@ -264,11 +325,28 @@ order by isfraud, predicted_label;
 
 To compute the overall accuracy, we then add up the correctly predicted values and divide by the total number of observations. Your numbers might be slightly different but it will be in the 99% range.
 
-<p align="center"><img src="jpg/initial_all.png" width="300" height="300" /></p>
+```
+select 'overall' predicted_label
+        ,sum(iff(isfraud = predicted_label,1,0)) correct_predictions
+        ,count(*) total_predictions
+        ,(correct_predictions/total_predictions)*100 accuracy
+from cc_dataset_prediction_result;
+```
+
+<p align="center"><img src="jpg/dev_all.png" width="800" height="300" /></p>
 
 Pretty good, right? Next, let’s drill down and review the accuracy for each of the predicted classes: not fraudulent (majority class) and fraudulent (minority class).
 
-<p align="center"><img src="jpg/initial_detail.png" width="300" height="300" /></p>
+```
+select predicted_label
+        ,sum(iff(isfraud = predicted_label,1,0)) correct_predictions
+        ,count(*) total_predictions
+        ,(correct_predictions/total_predictions)*100 accuracy
+from cc_dataset_prediction_result
+group by predicted_label;
+```
+
+<p align="center"><img src="jpg/dev_detail.png" width="800" height="300" /></p>
 
 And that’s where our model shows some problems. Although the majority class is in the 99.99% range, the minority class has a very high rate of false positives. This means that if our model predicts a fraudulent transaction it will be wrong 4 times out of 5. In a practical application, this model would be useless.
 
@@ -282,10 +360,16 @@ To get a much more accurate model, we can use the defaults for the function aws_
 
 ```
 select aws_autopilot_create_model (
-  'cc-fraud-prediction-final' -- model name
+  'cc-fraud-prediction-prd' -- model name
   ,'cc_dataset_train'         -- training data table name
   ,'isfraud'                  -- target column
 );
+```
+
+This process will take considerably longer. To check the status run the aws_autopilot_describe_model.
+
+```
+select aws_autopilot_describe_model('cc-fraud-prediction-prd');
 ```
 
 Like you did before, run the scoring function after the model has been built. Check the status periodically using the function aws_autopilot_describe_model(). Re-create the endpoint if it doesn’t exist using the function aws_autopilot_create_endpoint().
@@ -293,10 +377,10 @@ Like you did before, run the scoring function after the model has been built. Ch
 Finally, score the test dataset using aws_autopilot_predict_outcome() and route the output into a different results table.
 
 ```
-create or replace table cc_dataset_prediction_result_final as 
+create or replace table cc_dataset_prediction_result_prd as 
   select isfraud,(parse_json(
       aws_autopilot_predict_outcome(
-        'cc-fraud-prediction'
+        'cc-fraud-prediction-prd'
         ,array_construct(
            step,type,amount,nameorig,oldbalanceorg,newbalanceorig
            ,namedest,oldbalancedest,newbalancedest,isflaggedfraud))
@@ -308,16 +392,35 @@ Then count the observations again by actual and predicted value.
 
 ```
 select isfraud, predicted_label, count(*)
-from cc_dataset_prediction_result_final
+from cc_dataset_prediction_result_prd
 group by isfraud, predicted_label
 order by isfraud, predicted_label;
 ```
 
-<p align="center"><img src="jpg/final_all.png" width="300" height="300" /></p>
+The overall accuracy is still in the upper 99% range and that is good.
 
-The overall accuracy is still in the upper 99% range and that is good. However, Autopilot shows its real power when we review the per class accuracy. It has improved from 18.5% to a whopping 88.88%.
+```
+select 'overall' predicted_label
+        ,sum(iff(isfraud = predicted_label,1,0)) correct_predictions
+        ,count(*) total_predictions
+        ,(correct_predictions/total_predictions)*100 accuracy
+from cc_dataset_prediction_result_prd;
+```
 
-<p align="center"><img src="jpg/final_detail.png" width="300" height="300" /></p>
+<p align="center"><img src="jpg/prd_all.png" width="800" height="300" /></p>
+
+However, Autopilot shows its real power when we review the per class accuracy. It has improved from 13.3% to a whopping 88.88%.
+
+```
+select predicted_label
+        ,sum(iff(isfraud = predicted_label,1,0)) correct_predictions
+        ,count(*) total_predictions
+        ,(correct_predictions/total_predictions)*100 accuracy
+from cc_dataset_prediction_result_prd
+group by predicted_label;
+```
+
+<p align="center"><img src="jpg/prd_detail.png" width="800" height="300" /></p>
 
 With these results, there is just one obvious question left to answer. Why wouldn’t we always let the Snowflake integration pick all parameters? The main reason is the time it takes to create the model with default parameters. In this particular example it takes 9 hours to produce an optimal model. So if you just want to test the end-to-end process, you may want to test by asking Autopilot to create only 1 model. However, when you want to get a model with the best accuracy, go with the defaults.
 
