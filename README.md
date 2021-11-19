@@ -14,6 +14,9 @@ You need access to an AWS and a Snowflake account. If you do not already have ac
 Next, clone the project's github repo. It includes all artifacts needed to create the AWS and Snowflake resources as well as the dataset we are going to analyze.
 
 ```
+cd ~
+mkdir github
+cd hithub 
 git clone https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration.git
 ```
 
@@ -147,14 +150,14 @@ Creating the stack should take about one minute. At this point, the integration 
 
 To follow best practices, we will not use the ACCOUNTADMIN role to run the steps for this demo. Therefore, log in into Snowflake with user “autopilot_user”. The password should be in your setup scripts.
 
-The demo consists of 4 major steps and all steps will be initiated via [SQL commands](scripts/demo.sql).
+The demo consists of 4 major steps and all steps:
 
 1. Data engineering (import dataset and simple data prep)
 1. Build initial model
 1. Score test dataset and evaluate model
 1. Optimize model (including hyperparameter tuning)
 
-All SQL statements for this demo are included in scripts/demo.sql. Open another Worksheet and Import the file.
+All SQL statements for this demo are included in [demo.sql](https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration/blob/main/scripts/demo.sql). Open another Worksheet and copy and paste the content or Import the file from your local repo.
 
 ### Data Engineering
 
@@ -184,6 +187,7 @@ create file format cc_file_format type=csv  skip_header=1;
 Next, head over to to a terminal session and use snowsql to upload the datafiles to an internal stage.
 
 ```
+cd ~/github/sfguide-aws-autopilot-integration/data
 snowsql -a <accountid> -u autopilot_user -s demo -q "put file://*.gz @~/autopilot/"
 ```
 
