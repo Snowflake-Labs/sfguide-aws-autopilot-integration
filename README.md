@@ -1,4 +1,4 @@
-
+l
 ![](jpg/asset_abstract_9.jpg)
 
 # The Snowflake/AWS Autopilot Integration: Machine Learning in SQL
@@ -426,7 +426,7 @@ group by predicted_label;
 
 <p align="center"><img src="jpg/prd_detail.png" width="800" height="300" /></p>
 
-With these results, there is just one obvious question left to answer. Why wouldn’t we always let the Snowflake integration pick all parameters? The main reason is the time it takes to create the model with default parameters. In this particular example it takes 9 hours to produce an optimal model. So if you just want to test the end-to-end process, you may want to test by asking Autopilot to create only 1 model. However, when you want to get a model with the best accuracy, go with the defaults.
+With these results, there is just one obvious question left to answer. Why wouldn’t we always let the Snowflake integration pick all parameters? The main reason is the time it takes to create the model with default parameters. In this particular example it takes 9 hours to produce an optimal model. So if you just want to test the end-to-end process, you may want to test by asking Autopilot to evaluate only 1 candidate model. However, when you want to get a model with the best accuracy, go with the defaults. Autopilot will then evaluate 250 candidates.
 
 ## Conclusion
 
