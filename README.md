@@ -16,7 +16,7 @@ Next, clone the project's github repo. It includes all artifacts needed to creat
 ```
 cd ~
 mkdir github
-cd hithub 
+cd ~/github 
 git clone https://github.com/Snowflake-Labs/sfguide-aws-autopilot-integration.git
 ```
 
